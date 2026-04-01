@@ -18,7 +18,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a2
 const LS_KEY = 'dashboard_gas_url';
 
 // Pega aquí tu URL de Apps Script para que sea automática
-const URL_FIJA = "https://script.google.com/macros/s/AKfycbwinsK28zjth1C5bMzOIwfy4Ifaqdc-awxLwv7XLsIqh7q-P6Sy7egWGux4MR1FQzp3/exec"; 
+const URL_FIJA = "https://script.google.com/macros/s/AKfycbycOqw3cQmejpqATVebfJ8Gf-Rw-rZ3Vk20yHjA3ac7GHV1Ek-PYWsjWho4e5KyfKo/exec";
 
 async function connectGAS() {
   const statusEl = document.getElementById('gasStatus');
@@ -70,7 +70,7 @@ async function connectGAS() {
   updateDash();
   
   // Ejecutar conexión automática tras 1 segundo de carga
-  setTimeout(connectGAS, 1000);
+  setTimeout(connectGAS, 500);
 })();
 
 // ... (Mantiene el resto de tus funciones de gráficos y filtrado) ...
