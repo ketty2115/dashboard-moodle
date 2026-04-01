@@ -1,79 +1,107 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel de Seguimiento · CPEIP – UFRO</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<style>
-/* Conservo tus estilos originales para que no cambie el diseño */
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a2e;min-height:100vh}
-/* ... resto de tu CSS ... */
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Seguimiento · CPEIP – UFRO</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <style>
+        /* ESTILOS ORIGINALES */
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a2e;min-height:100vh}
+        .db-header{background:linear-gradient(135deg,#0D2B5E 0%,#1A4A8A 60%,#1A3F5E 100%);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;box-shadow:0 2px 8px rgba(0,0,0,0.3);color:white}
+        .prog-section{background:#fff;padding:15px;margin:10px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);display:none;}
+        .status-badge{padding:4px 10px;border-radius:4px;font-size:0.9rem;}
+        .sc-wait{background:#fff3cd;color:#856404}
+        .sc-ok{background:#d4edda;color:#155724}
+        .sc-err{background:#f8d7da;color:#721c24}
+        .main-container{padding:20px;}
+        .grid-cards{display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:20px;}
+        .card{background:white;padding:20px;border-radius:10px;box-shadow:0 4px 6px rgba(0,0,0,0.05);}
+    </style>
 </head>
 <body>
+
+<header class="db-header">
+    <h1>Panel de Seguimiento Moodle</h1>
+    <div id="gasStatus" class="status-badge">Esperando conexión...</div>
+</header>
+
+<div id="progSection" class="prog-section">
+    <div id="progBarText">Iniciando conexión con Google Sheets...</div>
+    <div style="width:100%; background:#eee; height:10px; border-radius:5px; margin-top:10px;">
+        <div id="progBarFill" style="width:0%; background:#28a745; height:100%; border-radius:5px; transition: width 0.3s;"></div>
+    </div>
+</div>
+
+<main class="main-container">
+    <div id="panel-overview" class="panel active">
+        <div class="grid-cards" id="courseGrid">
+            </div>
+    </div>
+</main>
+
 <script>
-// ── CONFIGURACIÓN AUTOMÁTICA PARA GITHUB ──────────────────────────────────────
-const LS_KEY = 'dashboard_gas_url';
+// ── CONFIGURACIÓN AUTOMÁTICA ──────────────────────────────────────
+const URL_FIJA = "https://script.google.com/macros/s/AKfycbycOqw3cQmejpqATVebfJ8Gf-Rw-rZ3Vk20_HjA3ac7GHV1Ek-PYWsjWho4e5KyfKo/exec";
 
-// Pega aquí tu URL de Apps Script para que sea automática
-const URL_FIJA = "https://script.google.com/macros/s/AKfycbycOqw3cQmejpqATVebfJ8Gf-Rw-rZ3Vk20yHjA3ac7GHV1Ek-PYWsjWho4e5KyfKo/exec";
-
-async function connectGAS() {
-  const statusEl = document.getElementById('gasStatus');
-  const progSection = document.getElementById('progSection');
-  
-  setSt('gasStatus', 'Conectando automáticamente...', 'sc-wait');
-  setP(10, 'Iniciando...');
-  progSection.style.display = 'block';
-
-  try {
-    // Usamos la URL fija directamente
-    const response = await fetch(URL_FIJA, { 
-        method: 'GET',
-        mode: 'cors', // Crucial para GitHub -> Google
-        redirect: 'follow' 
-    });
-    
-    if (!response.ok) throw new Error('Error en la respuesta del servidor');
-    
-    const data = await response.json();
-    
-    if (data.cursos) {
-      window.DASH_DATA = data.cursos;
-      localStorage.setItem(LS_KEY, URL_FIJA);
-      
-      setSt('gasStatus', '¡Datos actualizados!', 'sc-ok');
-      setP(100, 'Completado');
-      
-      // Ocultar panel de carga tras éxito
-      setTimeout(() => { progSection.style.display = 'none'; }, 2000);
-      
-      populateCourses();
-      populateAulas();
-      updateDash();
-    }
-  } catch (e) {
-    setSt('gasStatus', 'Error de conexión automática', 'sc-err');
-    console.error('Error:', e);
-    // Si falla la automática, permitimos el modo manual por si acaso
-    document.getElementById('savedChip').classList.remove('visible');
-  }
+// Funciones de estado visual
+function setSt(id, txt, cls) { 
+    const el = document.getElementById(id);
+    el.innerText = txt;
+    el.className = 'status-badge ' + cls;
 }
 
-// Modificamos el inicio para que intente conectar apenas cargue la página
-(function init() {
-  buildAllDemo(); // Carga demo mientras conecta
-  populateCourses();
-  populateAulas();
-  updateDash();
-  
-  // Ejecutar conexión automática tras 1 segundo de carga
-  setTimeout(connectGAS, 500);
-})();
+function setP(perc, txt) {
+    document.getElementById('progBarFill').style.width = perc + '%';
+    document.getElementById('progBarText').innerText = txt;
+}
 
-// ... (Mantiene el resto de tus funciones de gráficos y filtrado) ...
+async function connectGAS() {
+    const progSection = document.getElementById('progSection');
+    setSt('gasStatus', 'Conectando...', 'sc-wait');
+    progSection.style.display = 'block';
+    setP(30, 'Buscando datos en Google Drive...');
+
+    try {
+        const response = await fetch(URL_FIJA, { method: 'GET', redirect: 'follow' });
+        if (!response.ok) throw new Error('Error de red');
+        
+        const data = await response.json();
+        setP(80, 'Procesando cursos...');
+
+        if (data.cursos) {
+            renderCursos(data.cursos);
+            setSt('gasStatus', '¡Conectado!', 'sc-ok');
+            setP(100, 'Datos cargados con éxito');
+            setTimeout(() => { progSection.style.display = 'none'; }, 2000);
+        }
+    } catch (e) {
+        setSt('gasStatus', 'Error de conexión', 'sc-err');
+        setP(0, 'No se pudo obtener datos reales');
+        console.error(e);
+    }
+}
+
+function renderCursos(cursos) {
+    const grid = document.getElementById('courseGrid');
+    grid.innerHTML = '';
+    cursos.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <h3>${c.nombre}</h3>
+            <p style="margin-top:10px; color:#666;">Participantes: ${c.aulas ? c.aulas.length : 0}</p>
+            <a href="${c.url}" target="_blank" style="color:#1A4A8A; font-size:0.8rem;">Ver planilla original</a>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+// Iniciar automáticamente
+window.onload = () => {
+    connectGAS();
+};
 </script>
 </body>
 </html>
