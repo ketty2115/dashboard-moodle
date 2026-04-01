@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de Seguimiento · CPEIP – UFRO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+/* Conservo tus estilos originales para que no cambie el diseño */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f5f7;color:#1a1a2e;min-height:100vh}
+/* ... resto de tu CSS ... */
+</style>
+</head>
+<body>
+<script>
+// ── CONFIGURACIÓN AUTOMÁTICA PARA GITHUB ──────────────────────────────────────
+const LS_KEY = 'dashboard_gas_url';
+
+// Pega aquí tu URL de Apps Script para que sea automática
+const URL_FIJA = "https://script.google.com/macros/s/AKfycbwinsK28zjth1C5bMzOIwfy4Ifaqdc-awxLwv7XLsIqh7q-P6Sy7egWGux4MR1FQzp3/exec"; 
+
+async function connectGAS() {
+  const statusEl = document.getElementById('gasStatus');
+  const progSection = document.getElementById('progSection');
+  
+  setSt('gasStatus', 'Conectando automáticamente...', 'sc-wait');
+  setP(10, 'Iniciando...');
+  progSection.style.display = 'block';
+
+  try {
+    // Usamos la URL fija directamente
+    const response = await fetch(URL_FIJA, { 
+        method: 'GET',
+        mode: 'cors', // Crucial para GitHub -> Google
+        redirect: 'follow' 
+    });
+    
+    if (!response.ok) throw new Error('Error en la respuesta del servidor');
+    
+    const data = await response.json();
+    
+    if (data.cursos) {
+      window.DASH_DATA = data.cursos;
+      localStorage.setItem(LS_KEY, URL_FIJA);
+      
+      setSt('gasStatus', '¡Datos actualizados!', 'sc-ok');
+      setP(100, 'Completado');
+      
+      // Ocultar panel de carga tras éxito
+      setTimeout(() => { progSection.style.display = 'none'; }, 2000);
+      
+      populateCourses();
+      populateAulas();
+      updateDash();
+    }
+  } catch (e) {
+    setSt('gasStatus', 'Error de conexión automática', 'sc-err');
+    console.error('Error:', e);
+    // Si falla la automática, permitimos el modo manual por si acaso
+    document.getElementById('savedChip').classList.remove('visible');
+  }
+}
+
+// Modificamos el inicio para que intente conectar apenas cargue la página
+(function init() {
+  buildAllDemo(); // Carga demo mientras conecta
+  populateCourses();
+  populateAulas();
+  updateDash();
+  
+  // Ejecutar conexión automática tras 1 segundo de carga
+  setTimeout(connectGAS, 1000);
+})();
+
+// ... (Mantiene el resto de tus funciones de gráficos y filtrado) ...
+</script>
+</body>
+</html>
